@@ -1,0 +1,27 @@
+services:
+  parseinvoice:
+    build:
+      context: .  # Build from the current directory
+      dockerfile: Dockerfile.parseinvoice  # Use your FastAPI server's Dockerfile
+    image: parseinvoice:latest  # Name the built image
+    container_name: parseinvoice
+    restart: always
+    volumes:
+      - ./data/templates:/data/templates
+      - ./data/pdfs:/data/pdfs
+      - ./data/output:/data/output
+    ports:
+      - "8000:8000"  # Expose FastAPI server if needed
+
+  invoice2data:
+    build:
+      context: .  # Build from the current directory
+      dockerfile: Dockerfile  # Use the invoice2data Dockerfile
+    image: invoice2data:latest  # Name the built image
+    container_name: invoice2data
+    restart: always
+    volumes:
+      - ./data/templates:/data/templates
+      - ./data/pdfs:/data/pdfs
+      - ./data/output:/data/output
+    entrypoint: ["/bin/sh", "-c", "while true; do sleep 3600; done"]

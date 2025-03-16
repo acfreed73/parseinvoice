@@ -1,0 +1,24 @@
+issuer: RCN Telecom Services
+fields:
+  invoice_number: Invoice Number:\s+([\d-]+)
+  date: Statement Date:\s+(\d{2}/\d{2}/\d{4})
+  due_date: AutoPay Charge Date:\s+(\d{2}/\d{2}/\d{4})
+  account_number: Account Number:\s+([\d-]+)
+  amount: Total Amount Due:\s+\$?([\d,]+\.\d{2})
+  bill_to_name:
+    regex: "Business Name:\\s*(.*?)\\s*Statement Date"
+    parser: str  # ✅ Added parser
+    multiline: true
+  bill_to_address:
+    regex: "Service Location:\\s*(.*?)\\s*Business Name"
+    parser: str  # ✅ Added parser
+    multiline: true
+options:
+  currency: USD
+  date_formats:
+    - "%m/%d/%Y"
+  decimal_separator: "."
+keywords:
+  - Invoice Number
+  - Account Number
+  - Total Amount Due

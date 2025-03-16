@@ -1,0 +1,24 @@
+issuer: CallIT, Inc.
+fields:
+  invoice_number: INVOICE\s+#(\d+)
+  date: ISSUED\s+(\d{2}/\d{2}/\d{4})
+  due_date: DUE\s+DATE\s+(\d{2}/\d{2}/\d{4})
+  account_number: (?s)ACCOUNT\s+NUMBER\s+\(\d{3}\)\s+\d{3}-\d{4}\s+(\d{9,}-\d+)
+  amount: TOTAL\s+DUE\s+\$([\d,]+\.\d{2})
+  current_balance: CURRENT\s+BALANCE\s+\$([\d,]+\.\d{2})
+  subtotal: SUBTOTAL\s+\$([\d,]+\.\d{2})
+  discount: DISCOUNT.*?\$([\d,]+\.\d{2})
+  usf_fee: USF\(Universal\s+Service\s+Fee\)\s+\$([\d,]+\.\d{2})
+  bill_to_name: (?s)BILL\s+TO\s+([\w\s]+)\n
+  bill_to_address: BILL\s+TO\s+[\w\s]+\n([^\n]+)
+  bill_to_city_state_zip: BILL\s+TO\s+[\w\s]+\n[\w\s\d\.,]+\n([\w\s]+,\s+\w{2}\s+\d{5})
+options:
+  currency: USD
+  date_formats:
+    - "%m/%d/%Y"
+  decimal_separator: "."
+keywords:
+  - CallIT, Inc.
+  - INVOICE
+  - Phone Service
+  - TOTAL DUE
