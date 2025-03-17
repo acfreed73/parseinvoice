@@ -73,3 +73,4 @@ target/
 /dist/
 /docs/_build/
 /src/*.egg-info/
+.qodo
