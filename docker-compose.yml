@@ -1,3 +1,5 @@
+version: "3.8"
+
 services:
   parseinvoice:
     build:
@@ -6,12 +8,17 @@ services:
     image: parseinvoice:latest  # Name the built image
     container_name: parseinvoice
     restart: always
+    depends_on:
+      - invoice2data  # Ensure invoice2data starts first
     volumes:
-      - ./data/templates:/data/templates
-      - ./data/pdfs:/data/pdfs
-      - ./data/output:/data/output
+      - ./data/templates:/app/data/templates
+      - ./data/pdfs:/app/data/pdfs
+      - ./data/output:/app/data/output
+      - ./data/invoices.db:/app/data/invoices.db  # Persist SQLite database
     ports:
-      - "8000:8000"  # Expose FastAPI server if needed
+      - "8000:8000"  # Expose FastAPI server
+    networks:
+      - invoice_network
 
   invoice2data:
     build:
@@ -21,7 +28,13 @@ services:
     container_name: invoice2data
     restart: always
     volumes:
-      - ./data/templates:/data/templates
-      - ./data/pdfs:/data/pdfs
-      - ./data/output:/data/output
-    entrypoint: ["/bin/sh", "-c", "while true; do sleep 3600; done"]
+      - ./data/templates:/app/data/templates
+      - ./data/pdfs:/app/data/pdfs
+      - ./data/output:/app/data/output
+    command: tail -f /dev/null  # Keeps the container running for debugging
+    networks:
+      - invoice_network
+
+networks:
+  invoice_network:
+    driver: bridge
