@@ -123,6 +123,8 @@
                 <!-- Template Builder -->
                 <section id="template-builder" style="display:none;">
                     <h2>Template Builder</h2>
+                    📖<a href="/docs/help/" target="_blank" class="btn btn-info">Open Documentation</a>
+
                     <p>Drag & Drop or Select a PDF to Extract Text</p>
                 
                     <div id="uploadPDFArea" class="drop-area">
@@ -144,7 +146,12 @@
                         <div class="text-section resizable">
                             <textarea id="extractedText" readonly></textarea>
                             <p>Selected Text: <input type="text" id="selectedText" readonly></p>
-                
+                            
+                            
+                            <label for="keywords">Keywords
+                                <span class="help-icon" onclick="openTooltipModal('keywords')">❓</span>
+                            </label>
+
                             <select id="annotationType">
                                 <option value="issuer">Issuer</option>
                                 <option value="keyword">Keyword</option>
@@ -154,14 +161,25 @@
                                 <option value="line">Line</option>
                             </select>
                             <button id="addAnnotation">Add Annotation</button>
-                
+                            <label for="annotationType">Annotation Type
+                                <span class="help-icon" onclick="openTooltipModal('annotationType')">❓</span>
+                            </label>
+
                             <h3>Annotations</h3>
                             <ul id="annotationsList"></ul>
                 
                             <input type="text" id="pdfName" placeholder="Enter PDF Name">
                             <button id="saveTemplate">Save Template</button>
                         </div>
-                        
+                        <!-- Tooltip Modal -->
+                        <div id="tooltipModal" class="modal">
+                            <div class="modal-content">
+                                <span class="close" onclick="closeTooltipModal()">&times;</span>
+                                <h3>Help Information</h3>
+                                <p id="tooltipText">Tooltip text goes here.</p>
+                            </div>
+                        </div>
+
                     </div>
                 </section>
             </div>

@@ -1,20 +1,24 @@
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.responses import HTMLResponse
 from pathlib import Path
-from server.app.routers import files, processing, templates, downloads, templates_api  # ✅ Make sure this is imported
+import mistune  # Ensure mistune is installed: pip install mistune
+from server.app.routers import files, processing, templates, downloads, templates_api
 
 app = FastAPI()
 
-# ✅ Mount Static Files
+DOCS_PATH = Path("server/docs/template_docs.md")
+
+# ✅ Mount Static Files (CSS, JS, images, etc.)
 app.mount("/static", StaticFiles(directory="server/static"), name="static")
 
 # ✅ Include Routers with Correct Prefixes
 app.include_router(files.router, prefix="/files", tags=["Files"])
 app.include_router(processing.router, prefix="/processing", tags=["Processing"])
 app.include_router(templates.router, prefix="/templates", tags=["Templates"])
-app.include_router(downloads.router, prefix="/downloads", tags=["Downloads"])  # ✅ Fix downloads prefix
-app.include_router(templates_api.router, prefix="/templates", tags=["Templates"])  # ✅ Add templates_api router
+app.include_router(downloads.router, prefix="/downloads", tags=["Downloads"])
+app.include_router(templates_api.router, prefix="/templates", tags=["Templates"])
 
 # ✅ Setup Jinja2 Templates
 templates = Jinja2Templates(directory="server/templates")
@@ -23,3 +27,49 @@ templates = Jinja2Templates(directory="server/templates")
 async def home(request: Request):
     """Serves the main frontend template."""
     return templates.TemplateResponse("index.html", {"request": request})
+
+@app.get("/docs/help/", response_class=HTMLResponse)
+async def serve_markdown():
+    """Convert Markdown to HTML and serve it as a webpage."""
+    if not DOCS_PATH.exists():
+        return HTMLResponse("<h1>Documentation not found</h1>", status_code=404)
+
+    with open(DOCS_PATH, "r", encoding="utf-8") as f:
+        md_content = f.read()
+    
+    html_content = mistune.markdown(md_content)
+
+    return HTMLResponse(f"""
+    <html>
+    <head>
+        <title>Template Documentation</title>
+        <style>
+            body {{
+                font-family: Arial, sans-serif;
+                margin: 40px;
+                max-width: 800px;
+                line-height: 1.6;
+            }}
+            h1, h2, h3 {{
+                color: #333;
+            }}
+            pre {{
+                background: #f4f4f4;
+                padding: 10px;
+                border-radius: 5px;
+                overflow-x: auto;
+            }}
+            code {{
+                font-family: monospace;
+                background: #eef;
+                padding: 3px;
+                border-radius: 4px;
+            }}
+        </style>
+    </head>
+    <body>
+        <h1>Template Documentation</h1>
+        {html_content}
+    </body>
+    </html>
+    """)

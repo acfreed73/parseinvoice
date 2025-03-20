@@ -194,3 +194,27 @@ function prevPage() {
         renderPage(pageNum);
     }
 }
+window.openTooltipModal = function (type) {
+    let tooltipText = {
+        "annotationType": "Annotations define what to extract from the invoice. Examples:\n- Issuer: The company name\n- Keywords: Words used to identify this invoice\n- Fields: Extracted values like date, amount, and invoice number.",
+        "keywords": "Keywords help match the invoice format. If the keywords don't appear, the template won't be used.",
+        "fields": "Fields define the data to extract. Required fields are:\n- invoice_number\n- date\n- amount\n- issuer."
+    };
+
+    document.getElementById("tooltipText").innerText = tooltipText[type] || "No information available.";
+    document.getElementById("tooltipModal").style.display = "block";
+};
+
+// Close Modal
+window.closeTooltipModal = function () {
+    document.getElementById("tooltipModal").style.display = "none";
+};
+
+// Close when clicking outside of modal
+window.onclick = function (event) {
+    let modal = document.getElementById("tooltipModal");
+    if (event.target === modal) {
+        modal.style.display = "none";
+    }
+};
+
