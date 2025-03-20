@@ -218,3 +218,59 @@ window.onclick = function (event) {
     }
 };
 
+// Array to store saved regex patterns
+// ✅ Define functions globally
+window.testRegex = function () {
+    let pattern = document.getElementById("regexPattern").value;
+    let testString = document.getElementById("regexTestString").value;
+    let resultsContainer = document.getElementById("regexResults");
+
+    try {
+        let regex = new RegExp(pattern, "g"); // Global match
+        let matches = [...testString.matchAll(regex)]; // Use matchAll for capturing groups
+
+        if (matches.length > 0) {
+            let highlightedText = testString;
+
+            matches.forEach(match => {
+                let fullMatch = match[0]; // Entire match
+                let groups = match.slice(1); // Captured groups
+
+                // Highlight the full match in **Yellow**
+                highlightedText = highlightedText.replace(fullMatch, `<span class="match-highlight">${fullMatch}</span>`);
+
+                // Highlight each captured group in **Green**
+                groups.forEach(group => {
+                    if (group) {
+                        highlightedText = highlightedText.replace(group, `<span class="group-highlight">${group}</span>`);
+                    }
+                });
+            });
+
+            resultsContainer.innerHTML = `
+                <p><strong>Highlighted Matches:</strong></p>
+                <pre>${highlightedText}</pre>
+                <p><strong>Match Details:</strong></p>
+                <pre>${matches.map((match, index) => `Match ${index + 1}: ${match[0]} at index ${match.index}\n    Groups: ${match.slice(1).join(', ')}`).join("\n")}</pre>
+            `;
+        } else {
+            resultsContainer.innerHTML = "<pre>No matches found.</pre>";
+        }
+    } catch (error) {
+        resultsContainer.innerHTML = "<pre>Invalid regex pattern!</pre>";
+    }
+};
+
+
+// ✅ Automatically run testRegex() when input changes
+document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("regexPattern").addEventListener("input", testRegex);
+    document.getElementById("regexTestString").addEventListener("input", testRegex);
+});
+
+document.getElementById("regexSuggestions").addEventListener("change", function () {
+    let selectedPattern = this.value;
+    if (selectedPattern) {
+        document.getElementById("regexPattern").value = selectedPattern;
+    }
+});

@@ -12,6 +12,8 @@
     <script type="module" src="/static/js/pdfs_init.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
     <script type="module" src="/static/js/template_builder.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xregexp/4.5.1/xregexp.min.js"></script>
+
 </head>
 
 <body>
@@ -170,6 +172,22 @@
                 
                             <input type="text" id="pdfName" placeholder="Enter PDF Name">
                             <button id="saveTemplate">Save Template</button>
+                        </div>
+                        <div class="regex-builder">
+                            <h3>Regex Builder</h3>
+                            <input type="text" id="regexPattern" placeholder="Enter your regex pattern..." />
+                            <input type="text" id="regexTestString" placeholder="Enter a test string..." />
+                            <label for="regexSuggestions">Common Patterns:</label>
+                            <select id="regexSuggestions">
+                                <option value="">-- Select a Pattern --</option>
+                                <option value="(\d+)">Digits (\d+)</option>
+                                <option value="(\w+)">Words (\w+)</option>
+                                <option value="Invoice#\s+(\d+)">Invoice# (\d+)</option>
+                                <option value="([A-Z][a-z]+)">Capitalized Words ([A-Z][a-z]+)</option>
+                                <option value="(\d{1,2}/\d{1,2}/\d{2,4})">Date (MM/DD/YYYY) (\d{1,2}/\d{1,2}/\d{2,4})</option>
+                            </select>
+                            <p><strong>Match Results:</strong></p>
+                            <pre id="regexResults"></pre>
                         </div>
                         <!-- Tooltip Modal -->
                         <div id="tooltipModal" class="modal">

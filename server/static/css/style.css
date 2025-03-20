@@ -91,7 +91,7 @@ html {
 
 .content-wrapper {
     width: 150%;
-    max-width: 900px;
+    max-width: 1200px;
     margin: 20 auto;
     background: white;
     padding: 20px;
@@ -243,4 +243,68 @@ html {
 
 .close:hover {
     color: red;
+}
+.regex-builder {
+    border: 1px solid #ddd;
+    padding: 15px;
+    margin-top: 20px;
+    background: #f9f9f9;
+    border-radius: 5px;
+}
+
+.regex-builder h3 {
+    margin-top: 0;
+}
+
+.regex-builder label {
+    font-weight: bold;
+}
+
+.regex-builder input,
+.regex-builder textarea {
+    width: 100%;
+    padding: 8px;
+    margin: 5px 0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.regex-builder button {
+    margin-top: 10px;
+    padding: 10px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.regex-builder button:hover {
+    background-color: #0056b3;
+}
+#regexResults {
+    height: 340px;
+    /* Adjustable height */
+    overflow-y: auto;
+    /* Enables vertical scrolling */
+    background: #f4f4f4;
+    padding: 10px;
+    border-radius: 5px;
+    font-family: monospace;
+    white-space: pre-wrap;
+    /* Ensures word wrapping */
+    border: 1px solid #ccc;
+}
+.match-highlight {
+    background-color: yellow;
+    font-weight: bold;
+    padding: 2px;
+    border-radius: 3px;
+}
+
+.group-highlight {
+    background-color: lightgreen;
+    font-weight: bold;
+    padding: 2px;
+    border-radius: 3px;
 }
