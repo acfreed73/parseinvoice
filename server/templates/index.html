@@ -43,7 +43,7 @@
                     <div id="drop-area" class="drop-area">
                         <p>Drag & Drop PDF files here or</p>
                         <input type="file" id="fileUpload" multiple>
-                        <button onclick="uploadFile()">Browse Files</button>
+                        <button onclick="uploadFile()">Upload Files</button>
                     </div>
                     <div class="btn-group">
                         <button onclick="resetAll()" class="btn btn-warning"><i class="fa fa-trash"></i> Reset All</button>
@@ -120,38 +120,50 @@
                         </tbody>
                     </table>
                 </section>
-
                 <!-- Template Builder -->
-                <section id="template-builder">
+                <section id="template-builder" style="display:none;">
                     <h2>Template Builder</h2>
-                    <p>Select text from the extracted PDF and classify it.</p>
+                    <p>Drag & Drop or Select a PDF to Extract Text</p>
                 
-                    <input type="file" id="uploadPDF">
-                    <button onclick="uploadPDF()">Upload PDF</button>
+                    <div id="uploadPDFArea" class="drop-area">
+                        <p>Drop PDF here or</p>
+                        <input type="file" id="uploadPDF">
+                    </div>
                 
-                    <textarea id="extractedText" readonly></textarea>
+                    <div class="pdf-text-container">
+                        <!-- Left: PDF Viewer -->
+                        <div class="pdf-viewer resizable">
+                            <canvas id="pdfCanvas"></canvas>
+                            <div class="pdf-controls">
+                                <button onclick="prevPage()">⬅️ Prev</button>
+                                <button onclick="nextPage()">Next ➡️</button>
+                            </div>
+                        </div>
                 
-                    <p>Selected Text: <input type="text" id="selectedText" readonly></p>
+                        <!-- Right: Extracted Text -->
+                        <div class="text-section resizable">
+                            <textarea id="extractedText" readonly></textarea>
+                            <p>Selected Text: <input type="text" id="selectedText" readonly></p>
                 
-                    <select id="annotationType">
-                        <option value="issuer">Issuer</option>
-                        <option value="keyword">Keyword</option>
-                        <option value="exclude_keyword">Exclude Keyword</option>
-                        <option value="field">Field</option>
-                        <option value="option">Option</option>
-                        <option value="line">Line</option>
-                    </select>
-                    <button id="addAnnotation">Add Annotation</button>
+                            <select id="annotationType">
+                                <option value="issuer">Issuer</option>
+                                <option value="keyword">Keyword</option>
+                                <option value="exclude_keyword">Exclude Keyword</option>
+                                <option value="field">Field</option>
+                                <option value="option">Option</option>
+                                <option value="line">Line</option>
+                            </select>
+                            <button id="addAnnotation">Add Annotation</button>
                 
-                    <h3>Annotations</h3>
-                    <ul id="annotationsList"></ul>
+                            <h3>Annotations</h3>
+                            <ul id="annotationsList"></ul>
                 
-                    <input type="text" id="pdfName" placeholder="Enter PDF Name">
-                    <button id="saveTemplate">Save Template</button>
-                
-                    <script src="/static/js/template_builder.js"></script>
+                            <input type="text" id="pdfName" placeholder="Enter PDF Name">
+                            <button id="saveTemplate">Save Template</button>
+                        </div>
+                        
+                    </div>
                 </section>
-
             </div>
         </main>
     </div>

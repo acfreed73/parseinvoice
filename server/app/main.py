@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
-from server.app.routers import files, processing, templates, downloads  # ✅ Import routers
+from server.app.routers import files, processing, templates, downloads, templates_api  # ✅ Make sure this is imported
 
 app = FastAPI()
 
@@ -14,6 +14,7 @@ app.include_router(files.router, prefix="/files", tags=["Files"])
 app.include_router(processing.router, prefix="/processing", tags=["Processing"])
 app.include_router(templates.router, prefix="/templates", tags=["Templates"])
 app.include_router(downloads.router, prefix="/downloads", tags=["Downloads"])  # ✅ Fix downloads prefix
+app.include_router(templates_api.router, prefix="/templates", tags=["Templates"])  # ✅ Add templates_api router
 
 # ✅ Setup Jinja2 Templates
 templates = Jinja2Templates(directory="server/templates")

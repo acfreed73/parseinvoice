@@ -1,12 +1,15 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, UploadFile, File
 from pathlib import Path
 from pydantic import BaseModel
 from typing import List
 import yaml
+import subprocess
 
 router = APIRouter()
 
-TEMPLATE_DIR = Path("data/templates")
+TEMPLATE_DIR = Path("data/templates")  # ✅ YAML Templates
+UPLOAD_DIR = Path("data/template_uploads")  # ✅ Uploaded PDFs for Template Builder
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 TEMPLATE_DIR.mkdir(parents=True, exist_ok=True)
 
 class Annotation(BaseModel):
@@ -71,3 +74,30 @@ async def save_template(request: Request):
         yaml.dump(template_data, f, default_flow_style=False)
 
     return {"message": "Template saved successfully", "template": template_path.name}
+
+# ✅ **NEW: Extract Text from PDF for Template Builder**
+@router.post("/extract/")
+async def extract_text_from_pdf(file: UploadFile = File(...)):
+    """Extracts text from a PDF and returns it for annotation."""
+    file_path = UPLOAD_DIR / file.filename
+
+    # ✅ Save uploaded file
+    with open(file_path, "wb") as buffer:
+        buffer.write(await file.read())
+
+    # ✅ Extract text using pdftotext
+    result = subprocess.run(
+        ["pdftotext", "-layout", str(file_path), "-"],
+        capture_output=True,
+        text=True
+    )
+
+    extracted_text = result.stdout.strip()
+
+    # ✅ Handle extraction failures
+    if not extracted_text:
+        raise HTTPException(
+            status_code=400,
+            detail=f"PDF '{file.filename}' appears to be an image-based file. Please run OCR before uploading."
+        )
+    return {"filename": file.filename, "text": extracted_text}

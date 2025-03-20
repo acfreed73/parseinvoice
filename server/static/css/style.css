@@ -181,3 +181,34 @@ html {
     background-color: #f8f8f8;
     margin: 20 auto;
 }
+.pdf-text-container {
+    display: flex;
+    gap: 20px;
+    height: 600px;
+    /* Default Height */
+}
+
+.pdf-viewer {
+    flex: 1;
+    border: 1px solid #ccc;
+    padding: 10px;
+    overflow: auto;
+    min-width: 40%;
+}
+
+#pdfCanvas {
+    width: 100%;
+}
+
+.text-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+#extractedText {
+    width: 100%;
+    height: 400px;
+    resize: vertical;
+    /* Allow resizing */
+}
