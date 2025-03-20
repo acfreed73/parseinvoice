@@ -1,5 +1,12 @@
 document.addEventListener("DOMContentLoaded", () => {
+    loadUnprocessedFiles();
+    fetchProcessedFiles();
+    setupDragAndDrop();
+});
+
+function setupDragAndDrop() {
     let dropArea = document.getElementById("drop-area");
+    if (!dropArea) return;
 
     dropArea.addEventListener("dragover", (event) => {
         event.preventDefault();
@@ -17,50 +24,60 @@ document.addEventListener("DOMContentLoaded", () => {
         let files = event.dataTransfer.files;
         if (files.length === 0) return;
 
-        let formData = new FormData();
-        formData.append("file", files[0]); // Only handling one file for now
-
-        try {
-            let response = await fetch("/upload/", {
-                method: "POST",
-                body: formData,
-            });
-
-            let result = await response.json();
-            alert(result.message);
-            location.reload();
-        } catch (error) {
-            console.error("Upload failed:", error);
-        }
+        await uploadFile(files[0]);
     });
-});
-async function retryProcessing(filename) {
-    if (!confirm(`Retry processing ${filename}?`)) return;
+}
+
+async function uploadFile(file) {
+    let formData = new FormData();
+    formData.append("file", file);
 
     try {
-        let response = await fetch(`/process/${filename}`, { method: "POST" });
+        let response = await fetch("/files/upload/", {
+            method: "POST",
+            body: formData
+        });
+
         let result = await response.json();
         alert(result.message);
 
-        if (result.message.includes("Successfully")) {
-            loadFileList();  // Refresh processed files ✅
-            loadUnprocessedFiles();  // Refresh unprocessed list ❌
+        let row = document.createElement("tr");
+        row.innerHTML = `
+            <td>${file.name}</td>
+            <td>${result.status === "success" ? "✅ Processed" : "❌ Failed"}</td>
+        `;
+
+        if (result.status === "success") {
+            document.getElementById("file-list").appendChild(row);
+        } else {
+            document.getElementById("unprocessed-list").appendChild(row);
         }
+
+        fetchProcessedFiles();
+        loadUnprocessedFiles();
     } catch (error) {
-        console.error("Error retrying processing:", error);
+        console.error("Upload failed:", error);
     }
 }
 
+
+
 async function loadUnprocessedFiles() {
     try {
-        let response = await fetch("/uploaded_files/");
+        let response = await fetch("/files/uploaded_files/");
         let result = await response.json();
 
         let unprocessedList = document.getElementById("unprocessed-list");
-        unprocessedList.innerHTML = ""; // Clear previous entries
+        if (!unprocessedList) return;
+        unprocessedList.innerHTML = "";
+
+        if (!result.files || result.files.length === 0) {
+            unprocessedList.innerHTML = "<tr><td colspan='2'>No unprocessed files</td></tr>";
+            return;
+        }
 
         result.files.forEach(file => {
-            if (!file.unprocessed) return; // Only show unprocessed files
+            if (!file.unprocessed) return;
 
             let row = document.createElement("tr");
             row.innerHTML = `
@@ -81,129 +98,153 @@ async function loadUnprocessedFiles() {
     }
 }
 
-
-// Call the function to populate the unprocessed section
-document.addEventListener("DOMContentLoaded", loadUnprocessedFiles);
-
-async function uploadFile() {
-    let fileInput = document.getElementById('fileUpload');
-    let file = fileInput.files[0];
-    if (!file) return;
-
-    let formData = new FormData();
-    formData.append("file", file);
-
+async function fetchProcessedFiles() {
     try {
-        let response = await fetch("/upload/", { method: "POST", body: formData });
-        let result = await response.json();
+        let response = await fetch("/files/uploaded_files/");
+        let data = await response.json();
 
-        alert(result.message);
+        let fileList = document.getElementById("file-list");
+        let unprocessedList = document.getElementById("unprocessed-list");
+        let downloadButtons = document.getElementById("download-buttons"); // ✅ Get the download buttons div
+        if (!fileList || !unprocessedList || !downloadButtons) return;
 
-        if (result.processed) {
-            fetchProcessedFiles(); // Refresh processed list
-        } else {
-            loadUnprocessedFiles(); // Refresh unprocessed list
+        fileList.innerHTML = "";
+        unprocessedList.innerHTML = "";
+
+        let hasProcessedFiles = false; // ✅ Track if there are processed files
+
+        if (!data.files || data.files.length === 0) {
+            fileList.innerHTML = "<tr><td colspan='3'>No processed files</td></tr>";
+            downloadButtons.style.display = "none"; // ✅ Hide download buttons if no files exist
+            return;
         }
+
+        data.files.forEach(file => {
+            let row = document.createElement("tr");
+            row.id = `row-${file.filename}`;
+
+            let filenameCell = document.createElement("td");
+            filenameCell.textContent = file.filename;
+
+            let statusCell = document.createElement("td");
+            let actionCell = document.createElement("td");
+
+            if (file.unprocessed) {
+                statusCell.innerHTML = "❌ Unprocessed";
+                actionCell.innerHTML = `
+                    <button class="btn btn-warning" onclick="retryProcessing('${file.filename}')">
+                        <i class="fa fa-sync"></i> Retry
+                    </button>
+                    <button class="btn btn-danger" onclick="deleteFile('${file.filename}')">
+                        <i class="fa fa-trash"></i> Delete
+                    </button>
+                `;
+                row.appendChild(filenameCell);
+                row.appendChild(statusCell);
+                row.appendChild(actionCell);
+                unprocessedList.appendChild(row);
+            } else if (file.processed) {
+                hasProcessedFiles = true; // ✅ We found a processed file
+                statusCell.innerHTML = "✅ Processed";
+                actionCell.innerHTML = `
+                    <button class="btn btn-danger" onclick="deleteFile('${file.filename}')">
+                        <i class="fa fa-trash"></i> Delete
+                    </button>
+                `;
+                row.appendChild(filenameCell);
+                row.appendChild(statusCell);
+                row.appendChild(actionCell);
+                fileList.appendChild(row);
+            }
+        });
+
+        // ✅ Show or Hide Download Buttons Based on Processed Files
+        downloadButtons.style.display = hasProcessedFiles ? "block" : "none";
     } catch (error) {
-        console.error("Upload error:", error);
+        console.error("Error loading processed files:", error);
     }
 }
 
-function resetAll() {
-    fetch("/reset/", { method: "POST" }).then(() => location.reload());
+// Call the function after processing
+document.addEventListener("DOMContentLoaded", fetchProcessedFiles);
+
+
+async function retryProcessing(filename) {
+    if (!confirm(`Retry processing ${filename}?`)) return;
+
+    try {
+        let response = await fetch(`/files/retry/${filename}`, { method: "POST" });  // ✅ Fixed API path
+        let result = await response.json();
+        alert(result.message);
+
+        if (result.status === "success") {
+            document.getElementById(`row-${filename}`)?.remove();
+            fetchProcessedFiles();  // ✅ Refresh processed list
+        } else {
+            loadUnprocessedFiles(); // ❌ Stays in unprocessed if failed
+        }
+    } catch (error) {
+        console.error("Error retrying processing:", error);
+    }
 }
+
+
 
 async function deleteFile(filename) {
     if (!confirm(`Are you sure you want to delete ${filename}?`)) return;
 
     try {
-        let response = await fetch(`/delete/${filename}`, { method: "DELETE" });
+        let response = await fetch(`/files/delete/${filename}`, { method: "DELETE" });
         let data = await response.json();
 
         alert(data.message);
 
-        // Find the row and remove it safely
         let row = document.getElementById(`row-${filename}`);
         if (row) {
             row.remove();
-        } else {
-            console.warn(`Row for ${filename} not found in DOM.`);
         }
 
-        // Refresh the UI
-        fetchProcessedFiles();  // Refresh processed list
-        loadUnprocessedFiles(); // Refresh unprocessed list
+        fetchProcessedFiles();
+        loadUnprocessedFiles();
     } catch (error) {
         console.error("Error deleting file:", error);
     }
 }
 
-
 async function reprocessFile(filename) {
     if (!confirm(`Reprocess ${filename}?`)) return;
 
     try {
-        let response = await fetch(`/process/${filename}`, { method: "POST" });
+        let response = await fetch(`/processing/process/${filename}`, { method: "POST" }); // ✅ Fixed API path
         let result = await response.json();
         alert(result.message);
 
         if (result.message.includes("Successfully")) {
-            loadFileList();  // Refresh processed list
-            loadUnprocessedFiles();  // Refresh unprocessed list
+            fetchProcessedFiles();
+            loadUnprocessedFiles();
         }
     } catch (error) {
         console.error("Error reprocessing file:", error);
     }
 }
-async function fetchProcessedFiles() {
-    const response = await fetch("/uploaded_files/");
-    const data = await response.json();
 
-    const fileList = document.getElementById("file-list");
-    const unprocessedList = document.getElementById("unprocessed-list");
+async function resetAll() {
+    if (!confirm("Are you sure you want to reset everything? This will delete all files and data!")) return;
 
-    fileList.innerHTML = "";  // Clear processed list
-    unprocessedList.innerHTML = "";  // Clear unprocessed list
+    try {
+        let response = await fetch("/files/reset/", { method: "POST" });
+        let data = await response.json();
 
-    data.files.forEach(file => {
-        let row = document.createElement("tr");
-        row.id = `row-${file.filename}`;
-
-        let filenameCell = document.createElement("td");
-        filenameCell.textContent = file.filename;
-
-        let statusCell = document.createElement("td");
-        let actionCell = document.createElement("td");
-
-        if (file.unprocessed) {
-            statusCell.innerHTML = "❌ Unprocessed";
-            actionCell.innerHTML = `
-                <button class="btn btn-warning" onclick="retryProcessing('${file.filename}')">
-                    <i class="fa fa-sync"></i> Retry
-                </button>
-                <button class="btn btn-danger" onclick="deleteFile('${file.filename}')">
-                    <i class="fa fa-trash"></i> Delete
-                </button>
-            `;
-            row.appendChild(filenameCell);
-            row.appendChild(statusCell);
-            row.appendChild(actionCell);
-            unprocessedList.appendChild(row);
-        } else if (file.processed) {
-            statusCell.innerHTML = "✅ Processed";
-            actionCell.innerHTML = `
-                <button class="btn btn-danger" onclick="deleteFile('${file.filename}')">
-                    <i class="fa fa-trash"></i> Delete
-                </button>
-            `;
-            row.appendChild(filenameCell);
-            row.appendChild(statusCell);
-            row.appendChild(actionCell);
-            fileList.appendChild(row);
-        }
-    });
+        alert(data.message);
+        location.reload();
+    } catch (error) {
+        console.error("Error resetting system:", error);
+    }
+}
+async function downloadCSV() {
+    window.location.href = "/downloads/download/csv/";  // ✅ Fixed API path
 }
 
-
-// Call the function after processing
-document.addEventListener("DOMContentLoaded", fetchProcessedFiles);
+async function downloadJSON() {
+    window.location.href = "/downloads/download/json/";  // ✅ Fixed API path
+}
