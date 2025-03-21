@@ -7,6 +7,7 @@ from fastapi.responses import FileResponse
 from pathlib import Path
 import csv
 from datetime import datetime
+import pandas as pd
 
 from server.app.utils import clean_json_output
 
@@ -20,6 +21,18 @@ DB_PATH = Path("data/invoices.db")
 
 OUTPUT_DIR = Path("data/output")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+field_mapping = {
+    "invoice_number": "Invoice Number",
+    "amount": "Amount",
+    "date": "Date",
+    "due_date": "Due Date",
+    "terms": "Terms",
+    "sold_to": "Sold To",
+    "bill_to": "Mail To",
+}
+
+columns_order = ["File"] + list(dict.fromkeys(field_mapping.values()))
 
 for directory in [UPLOAD_DIR, TEXT_DIR, UNPROCESSED_DIR]:
     directory.mkdir(parents=True, exist_ok=True)
@@ -126,3 +139,53 @@ async def download_csv():
             csv_writer.writerow(invoice_data)
 
     return FileResponse(csv_path, media_type="text/csv", filename=csv_filename)
+
+@router.get("/download/xls/")
+async def download_xlsx():
+    print("Test")
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT filename, json_data FROM invoices")
+    results = c.fetchall()
+    conn.close()
+
+    if not results:
+        return {"message": "No processed invoices found."}
+
+    invoices = []
+    for row in results:
+        if row[1] is None:
+            continue
+        try:
+            invoices.append((row[0], json.loads(row[1])))
+        except json.JSONDecodeError:
+            continue
+
+    if not invoices:
+        return {"message": "No valid invoice data found."}
+
+    formatted_data = []
+    for filename, invoice in invoices:
+        row = {"File": filename}
+        for key, col_name in field_mapping.items():
+            value = invoice.get(key, "")
+            if isinstance(value, str):
+                if col_name == "Mail To" and "innovationdiagnostics" in value.lower():
+                    value = "Innovation Diagnostics"
+                elif any(c in value for c in "-/") and len(value) >= 8:
+                    try:
+                        dt = datetime.strptime(value.strip(), "%Y-%m-%d")
+                        value = dt.strftime("%m/%d/%Y")
+                    except Exception:
+                        pass
+            row[col_name] = value
+        formatted_data.append(row)
+
+    df = pd.DataFrame(formatted_data)[columns_order]
+
+    xlsx_filename = f"invoices_summary_{datetime.today().strftime('%Y%m%d')}.xlsx"
+    xlsx_path = OUTPUT_DIR / xlsx_filename
+    df.to_excel(xlsx_path, index=False)
+
+    return FileResponse(xlsx_path, media_type="text/xls", filename=xlsx_filename)
+    # return FileResponse(xlsx_path, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", filename=xlsx_filename)

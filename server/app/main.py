@@ -23,10 +23,36 @@ app.include_router(templates_api.router, prefix="/templates", tags=["Templates"]
 # ✅ Setup Jinja2 Templates
 templates = Jinja2Templates(directory="server/templates")
 
+def get_all_files():
+    unprocessed_dir = Path("data/unprocessed")
+    processed_dir = Path("data/pdfs")
+
+    files = []
+
+    for path in unprocessed_dir.glob("*.pdf"):
+        files.append({
+            "filename": path.name,
+            "unprocessed": True
+        })
+
+    for path in processed_dir.glob("*.pdf"):
+        files.append({
+            "filename": path.name,
+            "unprocessed": False
+        })
+    return files
 @app.get("/")
 async def home(request: Request):
-    """Serves the main frontend template."""
-    return templates.TemplateResponse("index.html", {"request": request})
+    files = get_all_files()  # whatever you're currently using to list files
+    print(f"files: {files}")
+    raw_template_files = list(Path("data/templates_raw").glob("*.yml"))
+    raw_templates = [t.name for t in raw_template_files]
+
+    return templates.TemplateResponse("index.html", {
+        "request": request,
+        "files": files,
+        "raw_templates": raw_templates  # ✅ required for dropdown to populate
+    })
 
 @app.get("/docs/help/", response_class=HTMLResponse)
 async def serve_markdown():

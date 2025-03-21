@@ -8,6 +8,12 @@
     <link rel="icon" type="image/png" href="/static/callit_logo.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/static/css/style.css">
+    <script>
+        const rawTemplates = {{ raw_templates | tojson | safe }};
+        console.log("Templates:", rawTemplates);
+    </script>
+
+
     <script src="/static/js/app.js" defer></script>
     <script type="module" src="/static/js/pdfs_init.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
@@ -52,6 +58,7 @@
                         <div id="download-buttons" style="display: none;">
                             <button onclick="downloadJSON()" class="btn btn-info"><i class="fa fa-download"></i> Download JSON</button>
                             <button onclick="downloadCSV()" class="btn btn-info"><i class="fa fa-download"></i> Download CSV</button>
+                            <button onclick="downloadXLS()" class="btn btn-info"><i class="fa fa-download"></i> Download XLS</button>
                         </div>
                     </div>
                     <h2>Uploaded Files</h2>
@@ -101,13 +108,25 @@
                         <thead>
                             <tr>
                                 <th>Filename</th>
-                                <th>Actions</th>
+                                <th>Options</th> <!-- Label for the checkbox and dropdown -->
+                                <th>Actions</th> <!-- Label for the buttons -->
                             </tr>
+                        </thead>
                         <tbody id="unprocessed-list">
                             {% for file in files %}
                             {% if file.unprocessed %}
                             <tr id="row-{{ file.filename }}">
                                 <td>{{ file.filename }}</td>
+                                <td>
+                                    <input type="checkbox" id="pdftotext-{{ file.filename }}"
+                                        onchange="toggleTemplateDropdown('{{ file.filename }}')"> Use pdftotext
+                                    <select id="template-select-{{ file.filename }}" style="display:none;">
+                                        <option value="">-- Select Template --</option>
+                                        {% for tpl in raw_templates %}
+                                        <option value="{{ tpl }}">{{ tpl }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
                                 <td>
                                     <button class="btn btn-warning" onclick="retryProcessing('{{ file.filename }}')">
                                         <i class="fa fa-sync"></i> Reprocess

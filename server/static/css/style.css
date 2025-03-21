@@ -308,3 +308,11 @@ html {
     padding: 2px;
     border-radius: 3px;
 }
+input[type="checkbox"] {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: relative !important;
+    width: auto !important;
+    height: auto !important;
+}

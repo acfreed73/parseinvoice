@@ -83,6 +83,13 @@ async function loadUnprocessedFiles() {
             row.innerHTML = `
                 <td>${file.filename}</td>
                 <td>
+                    <input type="checkbox" id="pdftotext-${file.filename}" onchange="toggleTemplateDropdown('${file.filename}')"> Use pdftotext
+                    <select id="template-select-${file.filename}" style="display:none;">
+                        <option value="">-- Select Template --</option>
+                        ${rawTemplates.map(tpl => `<option value="${tpl}">${tpl}</option>`).join("")}
+                    </select>
+                </td>
+                <td>
                     <button class="btn btn-warning" onclick="retryProcessing('${file.filename}')">
                         <i class="fa fa-sync"></i> Retry
                     </button>
@@ -91,6 +98,7 @@ async function loadUnprocessedFiles() {
                     </button>
                 </td>
             `;
+
             unprocessedList.appendChild(row);
         });
     } catch (error) {
@@ -170,25 +178,28 @@ document.addEventListener("DOMContentLoaded", fetchProcessedFiles);
 
 
 async function retryProcessing(filename) {
-    if (!confirm(`Retry processing ${filename}?`)) return;
+    if (!confirm(`Reprocess ${filename}?`)) return;
+
+    const usePdftotext = document.getElementById(`pdftotext-${filename}`)?.checked || false;
+    const template = document.getElementById(`template-select-${filename}`)?.value || "";
+
+    const url = new URL(`/processing/process/${filename}`, window.location.origin);
+    url.searchParams.set("pdftotext", usePdftotext);
+    if (usePdftotext && template) {
+        url.searchParams.set("template", template);
+    }
 
     try {
-        let response = await fetch(`/files/retry/${filename}`, { method: "POST" });  // ✅ Fixed API path
-        let result = await response.json();
+        const response = await fetch(url.toString(), { method: "POST" });
+        const result = await response.json();
         alert(result.message);
-
-        if (result.status === "success") {
-            document.getElementById(`row-${filename}`)?.remove();
-            fetchProcessedFiles();  // ✅ Refresh processed list
-        } else {
-            loadUnprocessedFiles(); // ❌ Stays in unprocessed if failed
-        }
-    } catch (error) {
-        console.error("Error retrying processing:", error);
+        fetchProcessedFiles();
+        loadUnprocessedFiles();
+    } catch (err) {
+        console.error("Error reprocessing:", err);
+        alert("Failed to reprocess the file.");
     }
 }
-
-
 
 async function deleteFile(filename) {
     if (!confirm(`Are you sure you want to delete ${filename}?`)) return;
@@ -210,12 +221,17 @@ async function deleteFile(filename) {
         console.error("Error deleting file:", error);
     }
 }
-
 async function reprocessFile(filename) {
     if (!confirm(`Reprocess ${filename}?`)) return;
 
+    const checkbox = document.querySelector(`.pdftotext-toggle[data-filename="${filename}"]`);
+    const usePdftotext = checkbox?.checked ? "true" : "false";
+
     try {
-        let response = await fetch(`/processing/process/${filename}`, { method: "POST" }); // ✅ Fixed API path
+        let response = await fetch(`/processing/process/${filename}?pdftotext=${usePdftotext}`, {
+            method: "POST"
+        });
+
         let result = await response.json();
         alert(result.message);
 
@@ -227,7 +243,6 @@ async function reprocessFile(filename) {
         console.error("Error reprocessing file:", error);
     }
 }
-
 async function resetAll() {
     if (!confirm("Are you sure you want to reset everything? This will delete all files and data!")) return;
 
@@ -247,4 +262,12 @@ async function downloadCSV() {
 
 async function downloadJSON() {
     window.location.href = "/downloads/download/json/";  // ✅ Fixed API path
+}
+async function downloadXLS() {
+    window.location.href = "/downloads/download/xls/";  // ✅ Fixed API path
+}
+function toggleTemplateDropdown(filename) {
+    const checkbox = document.getElementById(`pdftotext-${filename}`);
+    const dropdown = document.getElementById(`template-select-${filename}`);
+    dropdown.style.display = checkbox.checked ? "inline" : "none";
 }
