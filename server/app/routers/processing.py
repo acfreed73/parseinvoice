@@ -18,6 +18,23 @@ TEMPLATE_DIR = Path("data/templates")
 TEMPLATE_RAW_DIR = Path("data/templates_raw")
 DB_PATH = Path("data/invoices.db")
 
+def try_parse_date(date_str):
+    formats = [
+        "%d %B %Y",     # 21 March 2025
+        "%d-%b-%Y",     # 21-March-2025
+        "%B %d, %Y",    # March 21, 2025
+        "%b %d, %Y",    # Mar 21, 2025
+        "%Y-%m-%d",     # 2025-03-21
+        "%m/%d/%Y",     # 03/21/2025
+        "%Y/%m/%d",     # 2025/03/15
+    ]
+    for fmt in formats:
+        try:
+            return datetime.strptime(date_str, fmt)
+        except ValueError:
+            continue
+    return None
+
 def process_with_pdftotext(filename: str, template_name: str) -> dict:
     raw_result = subprocess.run(["pdftotext", "-raw", f"data/unprocessed/{filename}", "-"], capture_output=True, text=True)
     text = raw_result.stdout
@@ -38,11 +55,9 @@ def process_with_pdftotext(filename: str, template_name: str) -> dict:
     # Format date fields
     for date_field in ["date", "due_date"]:
         if date_field in extracted:
-            try:
-                dt = datetime.strptime(extracted[date_field], "%b %d, %Y")
-                extracted[date_field] = dt.strftime("%-m/%-d/%Y")  # Use "%m/%d/%Y" on Windows
-            except ValueError:
-                pass  # Keep original if format parsing fails
+            parsed_date = try_parse_date(extracted[date_field])
+            if parsed_date:
+                extracted[date_field] = parsed_date.strftime("%-m/%-d/%Y")  # Use "%m/%d/%Y" on Windows
 
     if "issuer" not in extracted:
         extracted["issuer"] = template.get("issuer")
