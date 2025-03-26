@@ -84,10 +84,12 @@ data/output/
 
 # Ignore dynamically created templates (Invoice2Data YAML files)
 data/templates/
+data/templates_raw/
 
 # Ignore SQLite database file (recreated automatically)
 data/invoices.db
-
+invoices.db
+invoices-output.json
 # Ignore all uploaded and processed PDFs
 server/static/templates
 
