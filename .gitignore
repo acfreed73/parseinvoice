@@ -30,7 +30,6 @@ var/
 *.manifest
 *.spec
 
-
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
@@ -65,12 +64,30 @@ target/
 .pytest_cache/
 
 .mypy_cache/
-/.coverage
-/.coverage.*
-/.nox/
-/.python-version
-/.pytype/
-/dist/
-/docs/_build/
-/src/*.egg-info/
+.coverage
+.coverage.*
+.nox/
+.python-version
+.pytype/
+dist/
+docs/_build/
+src/*.egg-info/
 .qodo
+
+# 🔹 Dynamically Created Files (Invoice Processor)
+# Ignore all uploaded and processed PDFs
+data/pdfs/
+data/unprocessed/
+
+# Ignore extracted invoice data (JSON/CSV)
+data/output/
+
+# Ignore dynamically created templates (Invoice2Data YAML files)
+data/templates/
+
+# Ignore SQLite database file (recreated automatically)
+data/invoices.db
+
+# Ignore all uploaded and processed PDFs
+server/static/templates
+
