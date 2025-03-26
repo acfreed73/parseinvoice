@@ -28,8 +28,8 @@ field_mapping = {
     "date": "Date",
     "due_date": "Due Date",
     "terms": "Terms",
-    "sold_to": "Sold To",
-    "bill_to": "Mail To",
+    "customer": "Customer",
+    "vendor": "Vendor",
 }
 
 columns_order = ["File"] + list(dict.fromkeys(field_mapping.values()))

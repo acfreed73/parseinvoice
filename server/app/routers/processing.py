@@ -18,15 +18,12 @@ TEMPLATE_DIR = Path("data/templates")
 TEMPLATE_RAW_DIR = Path("data/templates_raw")
 DB_PATH = Path("data/invoices.db")
 
+REQUIRED_FIELDS = ["invoice_number", "amount", "date", "customer", "vendor"]
+
 def try_parse_date(date_str):
     formats = [
-        "%d %B %Y",     # 21 March 2025
-        "%d-%b-%Y",     # 21-March-2025
-        "%B %d, %Y",    # March 21, 2025
-        "%b %d, %Y",    # Mar 21, 2025
-        "%Y-%m-%d",     # 2025-03-21
-        "%m/%d/%Y",     # 03/21/2025
-        "%Y/%m/%d",     # 2025/03/15
+        "%d %B %Y", "%d-%b-%Y", "%B %d, %Y", "%b %d, %Y",
+        "%Y-%m-%d", "%m/%d/%Y", "%Y/%m/%d"
     ]
     for fmt in formats:
         try:
@@ -35,8 +32,18 @@ def try_parse_date(date_str):
             continue
     return None
 
-def process_with_pdftotext(filename: str, template_name: str) -> dict:
-    raw_result = subprocess.run(["pdftotext", "-raw", f"data/unprocessed/{filename}", "-"], capture_output=True, text=True)
+def auto_select_template(filename: str) -> str:
+    lowercase_name = filename.lower()
+    for template_file in TEMPLATE_RAW_DIR.glob("*.yml"):
+        with open(template_file, "r") as f:
+            tpl = yaml.safe_load(f)
+            issuer = tpl.get("issuer", "").lower()
+            if issuer and issuer in lowercase_name:
+                return template_file.name
+    return None
+
+def process_with_pdftotext(filename: str, template_name: str, srcPDFS: str) -> dict:
+    raw_result = subprocess.run(["pdftotext", "-raw", f"data/{srcPDFS}/{filename}", "-"], capture_output=True, text=True)
     text = raw_result.stdout
 
     template_path = TEMPLATE_RAW_DIR / template_name
@@ -52,23 +59,31 @@ def process_with_pdftotext(filename: str, template_name: str) -> dict:
         if match:
             extracted[field] = match.group(1).strip()
 
-    # Format date fields
     for date_field in ["date", "due_date"]:
         if date_field in extracted:
             parsed_date = try_parse_date(extracted[date_field])
             if parsed_date:
-                extracted[date_field] = parsed_date.strftime("%-m/%-d/%Y")  # Use "%m/%d/%Y" on Windows
+                extracted[date_field] = parsed_date.strftime("%-m/%-d/%Y")
 
     if "issuer" not in extracted:
         extracted["issuer"] = template.get("issuer")
     extracted["desc"] = f"Invoice from {extracted['issuer']}"
     extracted["currency"] = template.get("options", {}).get("currency", "USD")
 
+    # Map legacy field names to new ones
+    if "sold_to" in extracted:
+        extracted["customer"] = extracted.pop("sold_to")
+    if "bill_to" in extracted:
+        extracted["vendor"] = extracted.pop("bill_to")
+
+    missing = [field for field in REQUIRED_FIELDS if field not in extracted or not extracted[field]]
+    if missing:
+        raise ValueError(f"Missing required fields: {', '.join(missing)}")
+
     return extracted
 
 @router.post("/process/{filename}")
 async def process_single_invoice(filename: str, pdftotext: bool = Query(False), template: str = Query(None)):
-    """Processes a single uploaded PDF using invoice2data or pdftotext fallback."""
     pdf_file = UPLOAD_DIR / filename
 
     if not pdf_file.exists():
@@ -78,13 +93,16 @@ async def process_single_invoice(filename: str, pdftotext: bool = Query(False), 
 
     if pdftotext:
         if not template:
-            raise HTTPException(status_code=400, detail="Template must be provided when using pdftotext mode.")
+            template = auto_select_template(filename)
+            if not template:
+                return {"message": f"No template matched filename: {filename}", "status": "failed"}
 
         try:
-            json_data = process_with_pdftotext(filename, template)
+            print(template)
+            json_data = process_with_pdftotext(filename, template, srcPDFS="unprocessed")
             print("Extracted using pdftotext:", json.dumps(json_data, indent=2))
         except Exception as e:
-            return {"message": f"pdftotext processing failed: {e}", "status": "failed"}
+            return {"message": f"pdftotext processing failed: {e}", "status": "failed", "template": template}
 
     else:
         result = subprocess.run(
@@ -102,7 +120,6 @@ async def process_single_invoice(filename: str, pdftotext: bool = Query(False), 
             shutil.move(pdf_file, unprocessed_path)
             return {"message": f"Processing failed for {filename}. Moved to unprocessed folder.", "status": "failed"}
 
-    # Save result to DB
     json_string = json.dumps(json_data, indent=2)
     try:
         conn = sqlite3.connect(DB_PATH, isolation_level=None)
@@ -113,9 +130,8 @@ async def process_single_invoice(filename: str, pdftotext: bool = Query(False), 
         return {"message": f"Database error: {e}"}
     finally:
         conn.close()
-        # ✅ Move processed file to 'pdfs'
         processed_path = UPLOAD_DIR / filename
         if pdf_file.exists():
             shutil.move(pdf_file, processed_path)
 
-    return {"message": f"Successfully processed {filename} (pdftotext: {pdftotext})"}
+    return {"message": f"Successfully processed {filename} (pdftotext: {pdftotext})", "status": "success", "template": template if pdftotext else None}

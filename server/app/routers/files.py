@@ -1,3 +1,4 @@
+import re
 import shutil
 import json
 import sqlite3
@@ -5,8 +6,10 @@ import subprocess
 from pathlib import Path
 from fastapi import APIRouter, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
+import yaml
 
 from server.app.utils import clean_json_output
+from server.app.routers.processing import process_with_pdftotext # Or relocate the helper
 
 router = APIRouter()
 
@@ -16,6 +19,7 @@ UNPROCESSED_DIR = Path("data/unprocessed")
 DB_PATH = Path("data/invoices.db")
 TEMPLATE_DIR = Path("data/templates")
 TEMPLATE_DIR.mkdir(parents=True, exist_ok=True)
+TEMPLATE_RAW_DIR = Path("data/templates_raw")
 
 for directory in [UPLOAD_DIR, TEXT_DIR, UNPROCESSED_DIR]:
     directory.mkdir(parents=True, exist_ok=True)
@@ -25,7 +29,6 @@ def sanitize_filename(filename):
     return filename.replace(" ", "_")
 
 def process_invoice(filename: str):
-    """Processes an invoice using invoice2data and updates the database."""
     print(f"🔹 Processing invoice: {filename}")
     file_path = UPLOAD_DIR / filename
 
@@ -36,14 +39,35 @@ def process_invoice(filename: str):
 
     print("Processing Output:", result.stdout)
     print("Processing Error:", result.stderr)
-
-    # ✅ Use shared JSON extraction
     json_data = clean_json_output(result.stderr)
 
     if "No template" in result.stderr or not json_data:
-        unprocessed_path = UNPROCESSED_DIR / filename
-        shutil.move(file_path, unprocessed_path)
-        return {"message": f"Processing failed for {filename}. Moved to unprocessed folder.", "status": "failed"}
+        # Try raw template fallback based on partial match from filename
+        fallback_template = None
+        filename_base = Path(filename).stem.lower()
+
+        for raw_tpl in TEMPLATE_RAW_DIR.glob("*.yml"):
+            template_base = raw_tpl.stem.lower().replace("_raw", "")
+            print(f"Checking if '{template_base}' in '{filename_base}'")
+            if template_base in filename_base:
+                fallback_template = raw_tpl.name
+                break
+
+
+        if fallback_template:
+            print(f"📎 Trying fallback template: {fallback_template}")
+            try:
+                # json_data = process_with_pdftotext_fallback(filename, fallback_template)
+                print(f"filename:{filename}")
+                print(f"fallback_template:{fallback_template}")
+                json_data = process_with_pdftotext(filename, fallback_template, srcPDFS="pdfs")
+
+            except Exception as e:
+                shutil.move(file_path, UNPROCESSED_DIR / filename)
+                return {"message": f"Fallback failed: {e}", "status": "failed", "template": fallback_template}
+        else:
+            shutil.move(file_path, UNPROCESSED_DIR / filename)
+            return {"message": f"No matching template found. Moved to unprocessed.", "status": "failed"}
 
     # ✅ Store valid JSON
     try:
@@ -53,28 +77,17 @@ def process_invoice(filename: str):
         c.execute("INSERT OR REPLACE INTO invoices (filename, json_data) VALUES (?, ?)", (filename, json_string))
         conn.commit()
     except sqlite3.OperationalError as e:
-        unprocessed_path = UNPROCESSED_DIR / filename
-        shutil.move(file_path, unprocessed_path)
+        shutil.move(file_path, UNPROCESSED_DIR / filename)
         return {"message": f"Database error: {e}. Moved to unprocessed folder.", "status": "failed"}
     finally:
         conn.close()
 
-    return {"message": f"Successfully processed {filename}", "filename": filename, "status": "success"}
-
-    # Store in database
-    try:
-        conn = sqlite3.connect(DB_PATH, isolation_level=None)
-        c = conn.cursor()
-        c.execute("INSERT OR REPLACE INTO invoices (filename, json_data) VALUES (?, ?)", (filename, json_string))
-        conn.commit()
-    except sqlite3.OperationalError as e:
-        unprocessed_path = UNPROCESSED_DIR / filename
-        shutil.move(file_path, unprocessed_path)
-        return {"message": f"Database error: {e}. Moved back to unprocessed folder.", "status": "failed"}
-    finally:
-        conn.close()
-
-    return {"message": f"Successfully processed {filename}", "filename": filename, "status": "success"}
+    return {
+        "message": f"Successfully processed {filename}",
+        "filename": filename,
+        "status": "success",
+        "template": fallback_template if 'fallback_template' in locals() else "invoice2data"
+    }
 
 @router.post("/upload/")
 async def upload_pdf(file: UploadFile = File(...)):
